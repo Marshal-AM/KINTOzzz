@@ -14,7 +14,7 @@ interface ResponseFormat {
   action: string;
   params: string;
   response: string;
-  suggestions: string;  // Added suggestions field
+  suggestions: string[];  // Changed to array
 }
 
 const app = express();
@@ -103,10 +103,10 @@ async function getNewMessages(
   }));
 }
 
-// Modified to extract the 'suggestions' field and handle nested JSON
+// Updated to return suggestions as an array
 function parseAssistantResponse(content: string): ResponseFormat {
   try {
-    // Try to parse the content as JSON, as the response field may contain nested JSON
+    // Try to parse the content as JSON
     const parsedContent = JSON.parse(content);
 
     return {
@@ -114,8 +114,8 @@ function parseAssistantResponse(content: string): ResponseFormat {
       params: parsedContent.params || "",
       response: parsedContent.response || "",
       suggestions: Array.isArray(parsedContent.suggestions)
-        ? parsedContent.suggestions.join(', ') // Convert suggestions array to a comma-separated string
-        : ""
+        ? parsedContent.suggestions
+        : parsedContent.suggestions.split(',').map((s: string) => s.trim()) // If it's a string, split it into an array
     };
   } catch (error) {
     // Fallback in case parsing fails
@@ -123,7 +123,7 @@ function parseAssistantResponse(content: string): ResponseFormat {
       action: "",
       params: "",
       response: content,
-      suggestions: "" // Default empty suggestions if not found
+      suggestions: [] // Default empty suggestions if not found
     };
   }
 }
