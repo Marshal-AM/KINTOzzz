@@ -14,6 +14,7 @@ interface ResponseFormat {
   action: string;
   params: string;
   response: string;
+  suggestions: string;  // Added suggestions field
 }
 
 const app = express();
@@ -27,7 +28,7 @@ app.post('/start-chat', async (req, res) => {
   const privateKey = process.env.PRIVATE_KEY;
   if (!privateKey) return res.status(500).send("Missing PRIVATE_KEY in .env");
   const contractAddress = process.env.CHAT_CONTRACT_ADDRESS;
-  if (!contractAddress) return res.status(500).send("Missing ANTROPIC_CONTRACT_ADDRESS in .env");
+  if (!contractAddress) return res.status(500).send("Missing CHAT_CONTRACT_ADDRESS in .env");
 
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const wallet = new Wallet(privateKey, provider);
@@ -102,19 +103,27 @@ async function getNewMessages(
   }));
 }
 
+// Modified to extract the 'suggestions' field and handle nested JSON
 function parseAssistantResponse(content: string): ResponseFormat {
-  const match = content.match(/\{\s*"action":\s*"([^"]*)"\s*,\s*"params":\s*"([^"]*)"\s*,\s*"response":\s*"([^"]*)"\s*\}/);
-  if (match) {
+  try {
+    // Try to parse the content as JSON, as the response field may contain nested JSON
+    const parsedContent = JSON.parse(content);
+
     return {
-      action: match[1],
-      params: match[2],
-      response: match[3].replace(/\\n/g, '\n')  // Replace escaped newlines with actual newlines
+      action: parsedContent.action || "",
+      params: parsedContent.params || "",
+      response: parsedContent.response || "",
+      suggestions: Array.isArray(parsedContent.suggestions)
+        ? parsedContent.suggestions.join(', ') // Convert suggestions array to a comma-separated string
+        : ""
     };
-  } else {
+  } catch (error) {
+    // Fallback in case parsing fails
     return {
       action: "",
       params: "",
-      response: content
+      response: content,
+      suggestions: "" // Default empty suggestions if not found
     };
   }
 }
